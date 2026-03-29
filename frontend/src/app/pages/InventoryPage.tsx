@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, Plus, Package } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
-// Import your Supabase connection (adjust path if your supabase.ts is located elsewhere)
 import { supabase } from '../../supabase'; 
 
 export interface Book {
@@ -46,6 +45,7 @@ export default function InventoryPage() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this book?')) {
+      const bookToDelete = books.find(b => b.id === id);
       const { error } = await supabase.from('books').delete().eq('id', id);
       
       if (error) {
@@ -53,6 +53,17 @@ export default function InventoryPage() {
         alert("Failed to delete book.");
       } else {
         setBooks(books.filter(book => book.id !== id));
+        
+        // LOG TRANSACTION: Book Deleted
+        if (bookToDelete) {
+          await supabase.from('transactions').insert([{
+            book_id: id,
+            book_name: bookToDelete.name,
+            action_type: 'DELETED',
+            quantity_changed: -(bookToDelete.stock_remaining), // Log the lost inventory
+            total_amount: 0
+          }]);
+        }
       }
     }
   };
@@ -73,21 +84,36 @@ export default function InventoryPage() {
   };
 
   const saveRestock = async (bookId: string, newStock: number, newTotal: number) => {
-    const { error } = await supabase
+    const bookToRestock = books.find(b => b.id === bookId);
+    const quantityAdded = newStock - (bookToRestock?.stock_remaining || 0);
+
+    const { error: updateError } = await supabase
       .from('books')
       .update({ stock_remaining: newStock, total_stock: newTotal })
       .eq('id', bookId);
 
-    if (error) {
-      console.error("Error restocking:", error);
+    if (updateError) {
+      console.error("Error restocking:", updateError);
       alert("Failed to update stock.");
-    } else {
-      setBooks(books.map(book =>
-        book.id === bookId
-          ? { ...book, stock_remaining: newStock, total_stock: newTotal }
-          : book
-      ));
+      return;
     }
+
+    // LOG TRANSACTION: Book Restocked
+    const { error: logError } = await supabase.from('transactions').insert([{
+      book_id: bookId,
+      book_name: bookToRestock?.name || 'Unknown',
+      action_type: 'RESTOCK',
+      quantity_changed: quantityAdded,
+      total_amount: 0 
+    }]);
+
+    if (logError) console.error("Error logging restock:", logError);
+
+    setBooks(books.map(book =>
+      book.id === bookId
+        ? { ...book, stock_remaining: newStock, total_stock: newTotal }
+        : book
+    ));
     
     setShowRestockModal(false);
     setSelectedBook(null);
@@ -95,6 +121,10 @@ export default function InventoryPage() {
 
   const handleSaveBook = async (bookData: Book) => {
     if (editingBook) {
+      // Find old book to see if stock changed manually
+      const oldBook = books.find(b => b.id === bookData.id);
+      const stockDiff = bookData.stock_remaining - (oldBook?.stock_remaining || 0);
+
       const { error } = await supabase
         .from('books')
         .update(bookData)
@@ -102,6 +132,17 @@ export default function InventoryPage() {
 
       if (!error) {
         setBooks(books.map(b => b.id === bookData.id ? bookData : b));
+        
+        // LOG TRANSACTION: Manual Edit (Only if stock actually changed)
+        if (stockDiff !== 0) {
+          await supabase.from('transactions').insert([{
+            book_id: bookData.id,
+            book_name: bookData.name,
+            action_type: 'MANUAL_EDIT',
+            quantity_changed: stockDiff,
+            total_amount: 0
+          }]);
+        }
       } else {
         console.error("Error updating:", error);
       }
@@ -113,7 +154,17 @@ export default function InventoryPage() {
         .select();
 
       if (!error && data) {
-        setBooks([...books, data[0]]);
+        const newBook = data[0];
+        setBooks([...books, newBook]);
+
+        // LOG TRANSACTION: Initial Stock Added
+        await supabase.from('transactions').insert([{
+          book_id: newBook.id,
+          book_name: newBook.name,
+          action_type: 'INITIAL_STOCK',
+          quantity_changed: newBook.stock_remaining,
+          total_amount: 0
+        }]);
       } else {
         console.error("Error adding:", error);
       }
@@ -124,7 +175,6 @@ export default function InventoryPage() {
 
   return (
     <div className="bg-gray-50 min-h-screen pb-20">
-      {/* Header */}
       <header className="bg-white px-5 pt-6 pb-4 shadow-sm sticky top-0 z-40">
         <div className="flex items-center gap-3 mb-4">
           <div className="relative flex-1">
@@ -149,7 +199,6 @@ export default function InventoryPage() {
         </div>
       </header>
 
-      {/* Book List */}
       <div className="px-5 pt-4 space-y-4">
         {filteredBooks.map((book) => (
           <BookCard
@@ -170,7 +219,6 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* Add/Edit Modal */}
       {showAddModal && (
         <AddBookModal
           book={editingBook}
@@ -182,7 +230,6 @@ export default function InventoryPage() {
         />
       )}
 
-      {/* Details Modal */}
       {showDetailsModal && selectedBook && (
         <DetailsModal
           book={selectedBook}
@@ -193,7 +240,6 @@ export default function InventoryPage() {
         />
       )}
 
-      {/* Quick Restock Modal */}
       {showRestockModal && selectedBook && (
         <QuickRestockModal
           book={selectedBook}
@@ -229,7 +275,6 @@ function BookCard({ book, onEdit, onDelete, onDetails, onQuickRestock }: {
 
   return (
     <div className="bg-white rounded-xl shadow-md p-5">
-      {/* Top Section */}
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="font-bold text-lg text-gray-900 mb-1">{book.name}</h3>
@@ -244,7 +289,6 @@ function BookCard({ book, onEdit, onDelete, onDetails, onQuickRestock }: {
         </button>
       </div>
 
-      {/* Middle Section - Insights Area */}
       <div className="mb-4">
         <div className="flex gap-2 mb-3">
           <div className={`flex-1 ${status.bgColor} ${status.textColor} rounded-full px-4 py-2 text-center`}>
@@ -257,7 +301,6 @@ function BookCard({ book, onEdit, onDelete, onDetails, onQuickRestock }: {
           </div>
         </div>
         
-        {/* Progress Bar */}
         <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
           <div 
             className={`h-full ${status.color} transition-all duration-300`}
@@ -267,7 +310,6 @@ function BookCard({ book, onEdit, onDelete, onDetails, onQuickRestock }: {
         <p className="text-xs text-gray-500 mt-1 text-right">{stockPercentage.toFixed(0)}% capacity</p>
       </div>
 
-      {/* Bottom Section - Action Buttons */}
       <div className="flex gap-2">
         <button
           onClick={() => onEdit(book)}
@@ -302,7 +344,6 @@ function AddBookModal({
   onClose: () => void;
   onSave: (book: Book) => void;
 }) {
-  // Use <any> here so the form accepts temporary empty strings while typing
   const [formData, setFormData] = useState<any>(
     book || {
       id: '',
@@ -319,7 +360,6 @@ function AddBookModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Force numbers back into the object before saving to Supabase
     onSave({
       ...formData,
       price: Number(formData.price) || 0,
@@ -331,14 +371,12 @@ function AddBookModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="bg-[#571977] px-6 py-4 rounded-t-lg">
           <h2 className="font-bold text-xl text-white text-center">
             {book ? 'EDIT RECORD' : 'ADD NEW RECORD'}
           </h2>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div>
             <label className="font-semibold text-[#571977] text-lg block mb-1">
@@ -439,7 +477,6 @@ function AddBookModal({
             </select>
           </div>
 
-          {/* Buttons */}
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
@@ -465,14 +502,12 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="bg-[#571977] px-6 py-4 rounded-t-lg">
           <h2 className="font-bold text-xl text-white text-center">
             BOOK DETAILS
           </h2>
         </div>
 
-        {/* Content */}
         <div className="p-6 space-y-5">
           <div>
             <label className="font-semibold text-[#571977] text-lg block mb-1">
@@ -537,7 +572,6 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
             </p>
           </div>
 
-          {/* Buttons */}
           <div className="flex gap-3 pt-2">
             <button
               type="button"
@@ -554,27 +588,23 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
 }
 
 function QuickRestockModal({ book, onClose, onSave }: { book: Book; onClose: () => void; onSave: (bookId: string, newStock: number, newTotal: number) => void }) {
-  // Allow these to temporarily be empty strings while the user is backspacing
   const [newStock, setNewStock] = useState<number | string>(book.stock_remaining);
   const [newTotal, setNewTotal] = useState<number | string>(book.total_stock);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Force them back to numbers before sending to Supabase
     onSave(book.id, Number(newStock) || 0, Number(newTotal) || 0);
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="bg-[#571977] px-6 py-4 rounded-t-lg">
           <h2 className="font-bold text-xl text-white text-center">
             QUICK RESTOCK
           </h2>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div>
             <label className="font-semibold text-[#571977] text-lg block mb-1">
@@ -622,7 +652,6 @@ function QuickRestockModal({ book, onClose, onSave }: { book: Book; onClose: () 
             />
           </div>
 
-          {/* Buttons */}
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
