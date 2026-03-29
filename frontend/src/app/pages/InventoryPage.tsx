@@ -4,7 +4,6 @@ import { BottomNav } from '../components/BottomNav';
 // Import your Supabase connection (adjust path if your supabase.ts is located elsewhere)
 import { supabase } from '../../supabase'; 
 
-// 1. Define the Book type here since mockData is gone
 export interface Book {
   id: string;
   name: string;
@@ -18,7 +17,6 @@ export interface Book {
 }
 
 export default function InventoryPage() {
-  // 2. Start with an empty array instead of mock data
   const [books, setBooks] = useState<Book[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -27,7 +25,6 @@ export default function InventoryPage() {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [showRestockModal, setShowRestockModal] = useState(false);
 
-  // 3. Fetch real data from Supabase when the page loads
   useEffect(() => {
     fetchBooks();
   }, []);
@@ -47,7 +44,6 @@ export default function InventoryPage() {
     String(book.id).includes(searchQuery)
   );
 
-  // 4. Update Delete to remove from Supabase
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this book?')) {
       const { error } = await supabase.from('books').delete().eq('id', id);
@@ -76,7 +72,6 @@ export default function InventoryPage() {
     setShowRestockModal(true);
   };
 
-  // 5. Update Restock to save to Supabase (FIXED to use snake_case!)
   const saveRestock = async (bookId: string, newStock: number, newTotal: number) => {
     const { error } = await supabase
       .from('books')
@@ -98,10 +93,8 @@ export default function InventoryPage() {
     setSelectedBook(null);
   };
 
-  // 6. Update Add/Edit to save to Supabase
   const handleSaveBook = async (bookData: Book) => {
     if (editingBook) {
-      // Update existing book
       const { error } = await supabase
         .from('books')
         .update(bookData)
@@ -113,12 +106,11 @@ export default function InventoryPage() {
         console.error("Error updating:", error);
       }
     } else {
-      // Add new book (remove the empty string ID so Supabase generates a real one)
       const { id, ...newBookData } = bookData; 
       const { data, error } = await supabase
         .from('books')
         .insert([newBookData])
-        .select(); // .select() returns the newly created row
+        .select();
 
       if (!error && data) {
         setBooks([...books, data[0]]);
@@ -225,7 +217,6 @@ function BookCard({ book, onEdit, onDelete, onDetails, onQuickRestock }: {
   onDetails: (book: Book) => void;
   onQuickRestock: (book: Book) => void;
 }) {
-  // Prevent division by zero if total_stock is 0
   const stockPercentage = book.total_stock > 0 ? (book.stock_remaining / book.total_stock) * 100 : 0;
   
   const getStockStatus = () => {
@@ -311,7 +302,8 @@ function AddBookModal({
   onClose: () => void;
   onSave: (book: Book) => void;
 }) {
-  const [formData, setFormData] = useState<Book>(
+  // Use <any> here so the form accepts temporary empty strings while typing
+  const [formData, setFormData] = useState<any>(
     book || {
       id: '',
       name: '',
@@ -327,7 +319,13 @@ function AddBookModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    // Force numbers back into the object before saving to Supabase
+    onSave({
+      ...formData,
+      price: Number(formData.price) || 0,
+      total_stock: Number(formData.total_stock) || 0,
+      stock_remaining: Number(formData.stock_remaining) || 0,
+    });
   };
 
   return (
@@ -378,7 +376,7 @@ function AddBookModal({
               type="number"
               step="0.01"
               value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value === '' ? '' : parseFloat(e.target.value) })}
               className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
               placeholder="0.00"
               required
@@ -406,7 +404,7 @@ function AddBookModal({
             <input
               type="number"
               value={formData.total_stock}
-              onChange={(e) => setFormData({ ...formData, total_stock: parseInt(e.target.value) || 0 })}
+              onChange={(e) => setFormData({ ...formData, total_stock: e.target.value === '' ? '' : parseInt(e.target.value) })}
               className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
               placeholder="0"
               required
@@ -420,7 +418,7 @@ function AddBookModal({
             <input
               type="number"
               value={formData.stock_remaining}
-              onChange={(e) => setFormData({ ...formData, stock_remaining: parseInt(e.target.value) || 0 })}
+              onChange={(e) => setFormData({ ...formData, stock_remaining: e.target.value === '' ? '' : parseInt(e.target.value) })}
               className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
               placeholder="0"
               required
@@ -556,12 +554,14 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
 }
 
 function QuickRestockModal({ book, onClose, onSave }: { book: Book; onClose: () => void; onSave: (bookId: string, newStock: number, newTotal: number) => void }) {
-  const [newStock, setNewStock] = useState(book.stock_remaining);
-  const [newTotal, setNewTotal] = useState(book.total_stock);
+  // Allow these to temporarily be empty strings while the user is backspacing
+  const [newStock, setNewStock] = useState<number | string>(book.stock_remaining);
+  const [newTotal, setNewTotal] = useState<number | string>(book.total_stock);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(book.id, newStock, newTotal);
+    // Force them back to numbers before sending to Supabase
+    onSave(book.id, Number(newStock) || 0, Number(newTotal) || 0);
   };
 
   return (
@@ -601,7 +601,7 @@ function QuickRestockModal({ book, onClose, onSave }: { book: Book; onClose: () 
             <input
               type="number"
               value={newTotal}
-              onChange={(e) => setNewTotal(parseInt(e.target.value) || 0)}
+              onChange={(e) => setNewTotal(e.target.value === '' ? '' : parseInt(e.target.value))}
               className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
               placeholder="0"
               required
@@ -615,7 +615,7 @@ function QuickRestockModal({ book, onClose, onSave }: { book: Book; onClose: () 
             <input
               type="number"
               value={newStock}
-              onChange={(e) => setNewStock(parseInt(e.target.value) || 0)}
+              onChange={(e) => setNewStock(e.target.value === '' ? '' : parseInt(e.target.value))}
               className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
               placeholder="0"
               required
