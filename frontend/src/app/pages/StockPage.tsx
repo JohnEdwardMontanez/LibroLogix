@@ -231,13 +231,13 @@ function StockCard({ book, onRestock }: { book: Book; onRestock: (book: Book) =>
           </div>
         </div>
 
-        {/* Restock Button */}
+        {/* Change Stock Button */}
         <button
           onClick={() => onRestock(book)}
           className="w-full bg-[#571977] text-white font-bold py-2.5 rounded-lg hover:bg-[#6a1e8a] transition-colors active:scale-[0.98] flex items-center justify-center gap-2"
         >
           <Package className="w-4 h-4" />
-          RESTOCK
+          Change Stock Value
         </button>
       </div>
     </div>
