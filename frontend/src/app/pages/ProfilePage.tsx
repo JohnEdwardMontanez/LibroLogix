@@ -46,24 +46,24 @@ export default function ProfilePage() {
       // Let's define "Low Stock" as 5 or fewer copies remaining
       const lowStockCount = books.filter(book => book.stock_remaining <= 5).length;
 
-      // 4. Process Transaction Stats
+// 4. Process Transaction Stats
       let revenueThisMonth = 0;
       let itemsSoldToday = 0;
 
       transactions.forEach(tx => {
-        // Only look at SALE actions
-        if (tx.action_type === 'SALE') {
-          const txDate = new Date(tx.created_at);
+        const txDate = new Date(tx.created_at);
+        const isDeduction = tx.quantity_changed < 0; // Any time stock is removed
 
-          // If the transaction happened this month, add to Monthly Sales revenue
-          if (txDate >= startOfMonth) {
-            revenueThisMonth += Number(tx.total_amount || 0);
-          }
+        // 1. Calculate Monthly Revenue (Only if it's a SALE or has a total_amount)
+        if (txDate >= startOfMonth && tx.total_amount > 0) {
+          revenueThisMonth += Number(tx.total_amount || 0);
+        }
 
-          // If the transaction happened today, add to Sales Today count
-          if (txDate >= startOfDay) {
-            itemsSoldToday += Math.abs(tx.quantity_changed);
-          }
+        // 2. Calculate Books Sold Today
+        // We count any stock deduction that happened today
+        if (txDate >= startOfDay && isDeduction) {
+          // Use Math.abs to turn -1 into 1
+          itemsSoldToday += Math.abs(tx.quantity_changed);
         }
       });
 
