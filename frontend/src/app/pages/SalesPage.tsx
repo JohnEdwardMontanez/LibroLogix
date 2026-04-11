@@ -202,95 +202,85 @@ export default function SalesPage() {
       </div>
 
 {/* =========================================
-           Stock Deflation Slider Modal
-           ========================================= */}
-      {showSlider && (
-        /* The overlay: inset-0 ensures it covers the whole mobile screen */
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          
-          {/* The Content Box: 
-              - w-[95%] ensures it doesn't touch the screen edges on tiny phones.
-              - max-w-md prevents it from getting too wide on tablets or desktop.
-              - max-h-[90vh] ensures it's scrollable if the phone is in landscape mode.
-          */}
-          <div className="bg-white w-[95%] max-w-md rounded-[2.5rem] p-6 md:p-8 space-y-6 shadow-2xl animate-in zoom-in-95 duration-300 overflow-y-auto max-h-[90vh] relative">
-            
-            {/* Header with Close Button */}
-            <div className="flex justify-between items-center sticky top-0 bg-white pb-2">
-              <h2 className="text-xl font-bold text-gray-800">Deflate Stock (Sale)</h2>
-              <button 
-                onClick={() => setShowSlider(false)} 
-                className="text-gray-400 hover:text-gray-900 p-2 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                ✕
-              </button>
+    Stock Deflation Slider Modal
+    ========================================= */}
+{showSlider && (
+  <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="bg-white w-[95%] max-w-md rounded-[2.5rem] p-6 md:p-8 space-y-6 shadow-2xl animate-in zoom-in-95 duration-300 overflow-y-auto max-h-[90vh] relative">
+      
+      <div className="flex justify-between items-center sticky top-0 bg-white pb-2">
+        <h2 className="text-xl font-bold text-gray-800">Deflate Stock (Sale)</h2>
+        <button onClick={() => setShowSlider(false)} className="text-gray-400 hover:text-gray-900 p-2 rounded-full hover:bg-gray-100 transition-colors">✕</button>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-xs font-black text-[#571977] uppercase tracking-widest ml-1">Select Product</label>
+        <select 
+          className="w-full bg-gray-50 border-2 border-gray-100 p-4 rounded-2xl outline-none appearance-none font-medium text-gray-700"
+          onChange={(e) => {
+            const book = books.find(b => b.id === parseInt(e.target.value));
+            setSelectedBook(book || null);
+            setSaleQty(1);
+          }}
+        >
+          <option value="">Choose a book...</option>
+          {books.map(b => (
+            <option key={b.id} value={b.id} disabled={b.stock_remaining <= 0}>
+              {b.name} ({b.stock_remaining} left)
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {selectedBook && (
+        <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
+          <div className="flex justify-between items-end bg-gray-50 p-4 rounded-2xl border border-gray-100">
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase">Quantity Sold</p>
+              <p className="text-4xl font-black text-[#571977]">{saleQty}</p>
             </div>
-
-            {/* Product Selection */}
-            <div className="space-y-2">
-              <label className="text-xs font-black text-[#571977] uppercase tracking-widest ml-1">
-                Select Product
-              </label>
-              <select 
-                className="w-full bg-gray-50 border-2 border-gray-100 p-4 rounded-2xl focus:ring-2 focus:ring-[#571977] focus:border-transparent outline-none appearance-none font-medium text-gray-700"
-                onChange={(e) => {
-                  const book = books.find(b => b.id === parseInt(e.target.value));
-                  setSelectedBook(book || null);
-                  setSaleQty(1);
-                }}
-              >
-                <option value="">Choose a book...</option>
-                {books.map(b => (
-                  <option key={b.id} value={b.id} disabled={b.stock_remaining <= 0}>
-                    {b.name} ({b.stock_remaining} left)
-                  </option>
-                ))}
-              </select>
+            <div className="text-right">
+              <p className="text-[10px] font-bold text-gray-400 uppercase">Total Price</p>
+              <p className="text-2xl font-bold text-gray-900">₱{(saleQty * selectedBook.price).toFixed(2)}</p>
             </div>
-
-            {/* Deflation Controls */}
-            {selectedBook && (
-              <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
-                <div className="flex justify-between items-end bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                  <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase">Quantity Sold</p>
-                    <p className="text-4xl font-black text-[#571977]">{saleQty}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase">Total Price</p>
-                    <p className="text-2xl font-bold text-gray-900">₱{(saleQty * selectedBook.price).toFixed(2)}</p>
-                  </div>
-                </div>
-                
-                {/* The Slider */}
-                <div className="px-2">
-                  <input 
-                    type="range"
-                    min="1"
-                    max={selectedBook.stock_remaining}
-                    value={saleQty}
-                    onChange={(e) => setSaleQty(parseInt(e.target.value))}
-                    className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#571977]"
-                  />
-                  <div className="flex justify-between mt-2 px-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase">1</span>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase">Max: {selectedBook.stock_remaining}</span>
-                  </div>
-                </div>
-
-                {/* Confirm Button */}
-                <button 
-                  onClick={handleSale}
-                  className="w-full bg-[#571977] text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-purple-200 active:scale-[0.97] transition-all flex items-center justify-center gap-3"
-                >
-                  <MinusCircle className="w-6 h-6" />
-                  CONFIRM SALE
-                </button>
-              </div>
-            )}
           </div>
+          
+          <div className="px-2">
+            <input 
+              type="range"
+              min="1"
+              max={selectedBook.stock_remaining}
+              value={saleQty}
+              onChange={(e) => setSaleQty(parseInt(e.target.value))}
+              /* 1. Added appearance-none to allow custom background */
+              className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#571977]"
+              /* 2. Added dynamic linear-gradient for the "Progress" color */
+              style={{
+                background: `linear-gradient(to right, #571977 ${
+                  ((saleQty - 1) / (selectedBook.stock_remaining - 1 || 1)) * 100
+                }%, #e5e7eb ${
+                  ((saleQty - 1) / (selectedBook.stock_remaining - 1 || 1)) * 100
+                }%)`
+              }}
+            />
+            <div className="flex justify-between mt-2 px-1">
+              <span className="text-[10px] font-bold text-gray-400 uppercase">1</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Max: {selectedBook.stock_remaining}</span>
+            </div>
+          </div>
+
+          <button 
+            onClick={handleSale}
+            className="w-full bg-[#571977] text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-purple-200 active:scale-[0.97] transition-all flex items-center justify-center gap-3"
+          >
+            <MinusCircle className="w-6 h-6" />
+            CONFIRM SALE
+          </button>
         </div>
       )}
+    </div>
+  </div>
+)}
 
       <BottomNav />
     </div>

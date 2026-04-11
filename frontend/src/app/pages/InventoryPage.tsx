@@ -291,7 +291,8 @@ function BookCard({ book, onEdit, onDelete, onDetails, onQuickRestock }: {
 
       <div className="mb-4">
         <div className="flex gap-2 mb-3">
-          <div className={`flex-1 ₱{status.bgColor} ₱{status.textColor} rounded-full px-4 py-2 text-center`}>
+          {/* FIXED: Using standard template literals with $ */}
+          <div className={`flex-1 ${status.bgColor} ${status.textColor} rounded-full px-4 py-2 text-center`}>
             <p className="text-xs font-semibold">In Stock</p>
             <p className="text-sm font-bold">{book.stock_remaining}</p>
           </div>
@@ -302,9 +303,10 @@ function BookCard({ book, onEdit, onDelete, onDetails, onQuickRestock }: {
         </div>
         
         <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+          {/* FIXED: Using standard template literals with $ */}
           <div 
-            className={`h-full ₱{status.color} transition-all duration-300`}
-            style={{ width: `₱{Math.min(stockPercentage, 100)}%` }}
+            className={`h-full ${status.color} transition-all duration-300`}
+            style={{ width: `${Math.min(stockPercentage, 100)}%` }}
           />
         </div>
         <p className="text-xs text-gray-500 mt-1 text-right">{stockPercentage.toFixed(0)}% capacity</p>
@@ -344,9 +346,9 @@ function AddBookModal({
   onClose: () => void;
   onSave: (book: Book) => void;
 }) {
-  const [formData, setFormData] = useState<any>(
+  // FIXED: Replaced 'any' with Partial<Book>
+  const [formData, setFormData] = useState<Partial<Book>>(
     book || {
-      id: '',
       name: '',
       author: '',
       price: 0,
@@ -361,10 +363,11 @@ function AddBookModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
-      ...formData,
+      ...(formData as Book), // Type assertion to ensure it matches the expected type
       price: Number(formData.price) || 0,
       total_stock: Number(formData.total_stock) || 0,
       stock_remaining: Number(formData.stock_remaining) || 0,
+      cost_price: Number(formData.cost_price) || 0,
     });
   };
 
@@ -384,7 +387,7 @@ function AddBookModal({
             </label>
             <input
               type="text"
-              value={formData.name}
+              value={formData.name || ''}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
               placeholder="Enter book name"
@@ -398,7 +401,7 @@ function AddBookModal({
             </label>
             <input
               type="text"
-              value={formData.author}
+              value={formData.author || ''}
               onChange={(e) => setFormData({ ...formData, author: e.target.value })}
               className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
               placeholder="Enter author name"
@@ -406,19 +409,37 @@ function AddBookModal({
             />
           </div>
 
-          <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Price
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value === '' ? '' : parseFloat(e.target.value) })}
-              className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
-              placeholder="0.00"
-              required
-            />
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="font-semibold text-[#571977] text-lg block mb-1">
+                Selling Price
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.price === 0 && !book ? '' : formData.price}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            {/* FIXED: Added Missing Cost Price Field */}
+            <div className="flex-1">
+              <label className="font-semibold text-[#571977] text-lg block mb-1">
+                Cost Price
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.cost_price === 0 && !book ? '' : formData.cost_price}
+                onChange={(e) => setFormData({ ...formData, cost_price: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
+                placeholder="0.00"
+                required
+              />
+            </div>
           </div>
 
           <div>
@@ -427,7 +448,7 @@ function AddBookModal({
             </label>
             <input
               type="date"
-              value={formData.publish_date}
+              value={formData.publish_date || ''}
               onChange={(e) => setFormData({ ...formData, publish_date: e.target.value })}
               className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
               placeholder="YYYY-MM-DD"
@@ -435,32 +456,34 @@ function AddBookModal({
             />
           </div>
 
-          <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Total Stock
-            </label>
-            <input
-              type="number"
-              value={formData.total_stock}
-              onChange={(e) => setFormData({ ...formData, total_stock: e.target.value === '' ? '' : parseInt(e.target.value) })}
-              className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
-              placeholder="0"
-              required
-            />
-          </div>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="font-semibold text-[#571977] text-lg block mb-1">
+                Total Capacity
+              </label>
+              <input
+                type="number"
+                value={formData.total_stock === 0 && !book ? '' : formData.total_stock}
+                onChange={(e) => setFormData({ ...formData, total_stock: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
+                placeholder="0"
+                required
+              />
+            </div>
 
-          <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Stock Remaining
-            </label>
-            <input
-              type="number"
-              value={formData.stock_remaining}
-              onChange={(e) => setFormData({ ...formData, stock_remaining: e.target.value === '' ? '' : parseInt(e.target.value) })}
-              className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
-              placeholder="0"
-              required
-            />
+            <div className="flex-1">
+              <label className="font-semibold text-[#571977] text-lg block mb-1">
+                In Stock
+              </label>
+              <input
+                type="number"
+                value={formData.stock_remaining === 0 && !book ? '' : formData.stock_remaining}
+                onChange={(e) => setFormData({ ...formData, stock_remaining: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
+                placeholder="0"
+                required
+              />
+            </div>
           </div>
 
           <div>
@@ -468,7 +491,7 @@ function AddBookModal({
               Status
             </label>
             <select
-              value={formData.status}
+              value={formData.status || 'Active'}
               onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
               className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black focus:outline-none focus:ring-2 focus:ring-[#571977]"
             >
@@ -527,13 +550,25 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
             </p>
           </div>
 
-          <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Price
-            </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
-              ₱{Number(book.price).toFixed(2)}
-            </p>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="font-semibold text-[#571977] text-lg block mb-1">
+                Selling Price
+              </label>
+              <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
+                ₱{Number(book.price).toFixed(2)}
+              </p>
+            </div>
+            
+            {/* Added Cost Price Display for consistency */}
+            <div className="flex-1">
+              <label className="font-semibold text-[#571977] text-lg block mb-1">
+                Cost Price
+              </label>
+              <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
+                ₱{Number(book.cost_price).toFixed(2)}
+              </p>
+            </div>
           </div>
 
           <div>
@@ -545,22 +580,24 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
             </p>
           </div>
 
-          <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Total Stock
-            </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
-              {book.total_stock}
-            </p>
-          </div>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="font-semibold text-[#571977] text-lg block mb-1">
+                Total Capacity
+              </label>
+              <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
+                {book.total_stock}
+              </p>
+            </div>
 
-          <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Stock Remaining
-            </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
-              {book.stock_remaining}
-            </p>
+            <div className="flex-1">
+              <label className="font-semibold text-[#571977] text-lg block mb-1">
+                In Stock
+              </label>
+              <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
+                {book.stock_remaining}
+              </p>
+            </div>
           </div>
 
           <div>
@@ -610,7 +647,7 @@ function QuickRestockModal({ book, onClose, onSave }: { book: Book; onClose: () 
             <label className="font-semibold text-[#571977] text-lg block mb-1">
               Book Name
             </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
+            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
               {book.name}
             </p>
           </div>
@@ -619,14 +656,14 @@ function QuickRestockModal({ book, onClose, onSave }: { book: Book; onClose: () 
             <label className="font-semibold text-[#571977] text-lg block mb-1">
               Author
             </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
+            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
               {book.author}
             </p>
           </div>
 
           <div>
             <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Total Stock
+              Total Capacity
             </label>
             <input
               type="number"

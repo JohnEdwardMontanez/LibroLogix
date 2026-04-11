@@ -3,14 +3,14 @@ import { Menu, Search, AlertTriangle, TrendingUp, TrendingDown, Package } from '
 import { BottomNav } from '../components/BottomNav';
 import { supabase } from '../../supabase'; // Adjust path if needed
 
-// Define the Book interface locally
+// FIXED: Interface now matches Supabase database columns (snake_case)
 export interface Book {
   id: string;
   name: string;
   author: string;
   price: number;
-  stockRemaining: number;
-  totalStock: number;
+  stock_remaining: number;
+  total_stock: number;
 }
 
 export default function StockPage() {
@@ -19,7 +19,6 @@ export default function StockPage() {
   const [showRestockModal, setShowRestockModal] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
-  // Fetch real data from Supabase when the page loads
   useEffect(() => {
     fetchBooks();
   }, []);
@@ -38,31 +37,30 @@ export default function StockPage() {
     book.author.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Calculate stock statistics safely
-  const lowStockBooks = books.filter(b => (Number(b.stockRemaining) / Number(b.totalStock)) <= 0.3);
-  const criticalStockBooks = books.filter(b => (Number(b.stockRemaining) / Number(b.totalStock)) <= 0.1);
-  const totalStockValue = books.reduce((sum, book) => sum + (Number(book.stockRemaining) * Number(book.price)), 0);
+  // FIXED: Calculations now use stock_remaining and total_stock
+  const lowStockBooks = books.filter(b => (Number(b.stock_remaining) / Number(b.total_stock)) <= 0.3);
+  const criticalStockBooks = books.filter(b => (Number(b.stock_remaining) / Number(b.total_stock)) <= 0.1);
+  const totalStockValue = books.reduce((sum, book) => sum + (Number(book.stock_remaining) * Number(book.price)), 0);
 
   const handleRestock = (book: Book) => {
     setSelectedBook(book);
     setShowRestockModal(true);
   };
 
-  // Update saveRestock to push changes to Supabase
   const saveRestock = async (bookId: string, newStock: number, newTotal: number) => {
+    // FIXED: Supabase update object uses snake_case
     const { error } = await supabase
       .from('books')
-      .update({ stockRemaining: newStock, totalStock: newTotal })
+      .update({ stock_remaining: newStock, total_stock: newTotal })
       .eq('id', bookId);
 
     if (error) {
       console.error("Error updating stock:", error);
       alert("Failed to update stock in database.");
     } else {
-      // Update local state so the UI reflects the changes instantly
       setBooks(books.map(book =>
         book.id === bookId
-          ? { ...book, stockRemaining: newStock, totalStock: newTotal }
+          ? { ...book, stock_remaining: newStock, total_stock: newTotal }
           : book
       ));
       setShowRestockModal(false);
@@ -167,52 +165,40 @@ export default function StockPage() {
 }
 
 function StockCard({ book, onRestock }: { book: Book; onRestock: (book: Book) => void }) {
-  const stockRemaining = Number(book.stockRemaining);
-  const totalStock = Number(book.totalStock);
-  const price = Number(book.price);
+  // FIXED: Variables now read correctly from Supabase data
+  const stockRemaining = Number(book.stock_remaining || 0);
+  const totalStock = Number(book.total_stock || 0);
+  const price = Number(book.price || 0);
   
   const stockPercentage = totalStock > 0 ? (stockRemaining / totalStock) * 100 : 0;
   
   const getStockStatus = () => {
-    if (stockPercentage <= 10) return { level: 'critical', color: 'bg-red-500', textColor: 'text-red-700', bgColor: 'bg-red-50', borderColor: 'border-red-300' };
-    if (stockPercentage <= 30) return { level: 'low', color: 'bg-yellow-500', textColor: 'text-yellow-700', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-300' };
-    return { level: 'normal', color: 'bg-green-500', textColor: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-300' };
+    if (stockPercentage <= 10) return { level: 'critical', textColor: 'text-red-700', bgColor: 'bg-red-50', borderColor: 'border-red-300' };
+    if (stockPercentage <= 30) return { level: 'low', textColor: 'text-yellow-700', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-300' };
+    return { level: 'normal', textColor: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-300' };
   };
 
   const status = getStockStatus();
 
   return (
-    <div className={`bg-white rounded-lg shadow-md overflow-hidden border-l-4 ₱{status.borderColor}`}>
+    <div className={`bg-white rounded-lg shadow-md overflow-hidden border-l-4 ${status.borderColor}`}>
       <div className="p-4">
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1">
             <h3 className="font-bold text-base text-gray-900 mb-1">{book.name}</h3>
             <p className="text-sm text-gray-600">{book.author}</p>
           </div>
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ₱{status.bgColor} ₱{status.textColor} border ₱{status.borderColor}`}>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${status.bgColor} ${status.textColor} border ${status.borderColor}`}>
             {status.level.toUpperCase()}
           </span>
         </div>
 
-        {/* Stock Progress Bar */}
-        <div className="mb-3">
-          <div className="flex justify-between text-xs text-gray-600 mb-1">
-            <span>Stock Level</span>
-            <span className="font-semibold">{stockRemaining} / {totalStock}</span>
-          </div>
-          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div 
-              className={`h-full ₱{status.color} transition-all duration-300`}
-              style={{ width: `₱{Math.min(stockPercentage, 100)}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Stock Details */}
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        {/* Stock Details - Progress Bar Removed! */}
+        <div className="grid grid-cols-2 gap-3 mb-3 mt-2">
           <div className="bg-gray-50 rounded-lg p-2">
             <p className="text-xs text-gray-600">Remaining</p>
-            <p className="text-lg font-bold text-gray-900">{stockRemaining}</p>
+            {/* The text color of the Remaining stock now dynamically changes! */}
+            <p className={`text-xl font-black ${status.textColor}`}>{stockRemaining}</p>
           </div>
           <div className="bg-gray-50 rounded-lg p-2">
             <p className="text-xs text-gray-600">Total Stock</p>
@@ -231,7 +217,6 @@ function StockCard({ book, onRestock }: { book: Book; onRestock: (book: Book) =>
           </div>
         </div>
 
-        {/* Change Stock Button */}
         <button
           onClick={() => onRestock(book)}
           className="w-full bg-[#571977] text-white font-bold py-2.5 rounded-lg hover:bg-[#6a1e8a] transition-colors active:scale-[0.98] flex items-center justify-center gap-2"
@@ -254,9 +239,10 @@ function RestockModal({
   onSave: (bookId: string, newStock: number, newTotal: number) => void;
 }) {
   const [restockAmount, setRestockAmount] = useState(0);
-  const [newTotal, setNewTotal] = useState(Number(book.totalStock));
+  // FIXED: Variable names read correctly
+  const [newTotal, setNewTotal] = useState(Number(book.total_stock));
   
-  const currentStock = Number(book.stockRemaining);
+  const currentStock = Number(book.stock_remaining);
   const newStockLevel = currentStock + restockAmount;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -267,14 +253,12 @@ function RestockModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        {/* Header */}
         <div className="bg-[#571977] px-6 py-4 rounded-t-lg">
           <h2 className="font-bold text-xl text-white text-center">
             RESTOCK BOOK
           </h2>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div className="bg-gray-50 rounded-lg p-4">
             <h3 className="font-bold text-base text-gray-900 mb-1">{book.name}</h3>
@@ -307,14 +291,13 @@ function RestockModal({
               type="number"
               min={newStockLevel}
               value={newTotal}
-              onChange={(e) => setNewTotal(parseInt(e.target.value) || Number(book.totalStock))}
+              onChange={(e) => setNewTotal(parseInt(e.target.value) || Number(book.total_stock))}
               className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
               placeholder="Enter new total capacity"
               required
             />
           </div>
 
-          {/* Summary */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-gray-700 mb-2">
               <span className="font-semibold">New Stock Level:</span> {newStockLevel}
@@ -324,7 +307,6 @@ function RestockModal({
             </p>
           </div>
 
-          {/* Buttons */}
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
