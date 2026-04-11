@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { History, TrendingUp, TrendingDown, Package, Trash2, BarChart3, List, MinusCircle, Plus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Trash2, BarChart3, List, MinusCircle, Plus } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import { supabase } from '../../supabase';
 
@@ -8,7 +8,7 @@ export interface Book {
   id: number;
   name: string;
   author: string;
-  price: number;
+  price?: number; // Made optional since it's not being actively used in the DB
   publish_date: string;
   status: string;
   stock_remaining: number;
@@ -32,7 +32,7 @@ export default function SalesPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // --- NEW STATES FOR SLIDER MODAL ---
+  // --- STATES FOR SLIDER MODAL ---
   const [showSlider, setShowSlider] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [saleQty, setSaleQty] = useState(1);
@@ -52,12 +52,13 @@ export default function SalesPage() {
     setIsLoading(false);
   }
 
-  // --- NEW HANDLER FOR STOCK DEFLATION ---
+  // --- HANDLER FOR STOCK DEFLATION ---
   const handleSale = async () => {
     if (!selectedBook) return;
 
     const newStock = selectedBook.stock_remaining - saleQty;
-    const totalSalesPrice = saleQty * selectedBook.price;
+    // Updated to use cost_price since price doesn't exist/isn't populated
+    const totalSalesPrice = saleQty * (Number(selectedBook.cost_price) || 0);
 
     // 1. Update the Book table
     const { error: bookError } = await supabase
@@ -80,6 +81,8 @@ export default function SalesPage() {
       setShowSlider(false);
       setSaleQty(1);
       fetchData(); // Refresh list
+    } else {
+      console.error("Sale transaction failed", bookError, txError);
     }
   };
 
@@ -102,12 +105,18 @@ export default function SalesPage() {
   };
 
   const reportData = books.map(book => {
-    const bookTxs = transactions.filter(t => t.book_id === book.id && t.quantity_changed < 0);
+    // Only calculate actual sales (ignoring 'DELETED' or manual negative edits)
+    const bookTxs = transactions.filter(t => t.book_id === book.id && t.action_type === 'SALE');
     const qtySold = bookTxs.reduce((sum, t) => sum + Math.abs(t.quantity_changed), 0);
-    const revenue = qtySold * book.price;
-    const cost = qtySold * (book.cost_price || 0);
+    
+    // Using cost_price instead of price
+    const revenue = qtySold * (Number(book.cost_price) || 0);
+    
+    // Since there's only one price field (cost_price), Profit will mirror Revenue to avoid huge negative numbers
+    const netProfit = revenue; 
+    
     const royalty = revenue * 0.15;
-    const netProfit = revenue - cost;
+    
     return { ...book, qtySold, revenue, netProfit, royalty };
   }).filter(stat => stat.qtySold > 0);
 
@@ -180,9 +189,15 @@ export default function SalesPage() {
                 </div>
               </div>
             ))}
+            
+            {reportData.length === 0 && (
+              <div className="text-center py-12 text-gray-500 bg-white rounded-xl border border-gray-100">
+                <p className="text-lg">No sales data yet</p>
+              </div>
+            )}
           </>
         ) : (
-          /* LOG VIEW (Same as before) */
+          /* LOG VIEW */
           transactions.map((tx) => {
             const styles = getActionStyles(tx.action_type, tx.quantity_changed);
             return (
@@ -241,7 +256,7 @@ export default function SalesPage() {
             </div>
             <div className="text-right">
               <p className="text-[10px] font-bold text-gray-400 uppercase">Total Price</p>
-              <p className="text-2xl font-bold text-gray-900">₱{(saleQty * selectedBook.price).toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-900">₱{(saleQty * (Number(selectedBook.cost_price) || 0)).toFixed(2)}</p>
             </div>
           </div>
           
@@ -252,9 +267,7 @@ export default function SalesPage() {
               max={selectedBook.stock_remaining}
               value={saleQty}
               onChange={(e) => setSaleQty(parseInt(e.target.value))}
-              /* 1. Added appearance-none to allow custom background */
               className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#571977]"
-              /* 2. Added dynamic linear-gradient for the "Progress" color */
               style={{
                 background: `linear-gradient(to right, #571977 ${
                   ((saleQty - 1) / (selectedBook.stock_remaining - 1 || 1)) * 100
