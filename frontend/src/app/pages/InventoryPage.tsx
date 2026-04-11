@@ -279,7 +279,8 @@ function BookCard({ book, onEdit, onDelete, onDetails, onQuickRestock }: {
         <div>
           <h3 className="font-bold text-lg text-gray-900 mb-1">{book.name}</h3>
           <p className="italic text-sm text-gray-600 mb-2">{book.author}</p>
-          <p className="text-2xl font-bold text-[#571977]">₱{Number(book.price).toFixed(2)}</p>
+          {/* Changed book.price to book.cost_price below to display the updated field */}
+          <p className="text-2xl font-bold text-[#571977]">₱{Number(book.cost_price).toFixed(2)}</p>
         </div>
         <button 
           onClick={() => onDelete(book.id)}
@@ -529,24 +530,14 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
             </p>
           </div>
 
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="font-semibold text-[#571977] text-lg block mb-1">
-                Selling Price
-              </label>
-              <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
-                ₱{Number(book.price).toFixed(2)}
-              </p>
-            </div>
-            
-            <div className="flex-1">
-              <label className="font-semibold text-[#571977] text-lg block mb-1">
-                Cost Price
-              </label>
-              <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
-                ₱{Number(book.cost_price).toFixed(2)}
-              </p>
-            </div>
+          {/* Replaced split Selling/Cost price fields with full-width Cost Price */}
+          <div>
+            <label className="font-semibold text-[#571977] text-lg block mb-1">
+              Cost Price
+            </label>
+            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
+              ₱{Number(book.cost_price).toFixed(2)}
+            </p>
           </div>
 
           <div>
