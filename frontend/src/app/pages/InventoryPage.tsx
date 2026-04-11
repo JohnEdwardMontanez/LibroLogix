@@ -291,7 +291,6 @@ function BookCard({ book, onEdit, onDelete, onDetails, onQuickRestock }: {
 
       <div className="mb-4">
         <div className="flex gap-2 mb-3">
-          {/* FIXED: Using standard template literals with $ */}
           <div className={`flex-1 ${status.bgColor} ${status.textColor} rounded-full px-4 py-2 text-center`}>
             <p className="text-xs font-semibold">In Stock</p>
             <p className="text-sm font-bold">{book.stock_remaining}</p>
@@ -303,7 +302,6 @@ function BookCard({ book, onEdit, onDelete, onDetails, onQuickRestock }: {
         </div>
         
         <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-          {/* FIXED: Using standard template literals with $ */}
           <div 
             className={`h-full ${status.color} transition-all duration-300`}
             style={{ width: `${Math.min(stockPercentage, 100)}%` }}
@@ -346,7 +344,6 @@ function AddBookModal({
   onClose: () => void;
   onSave: (book: Book) => void;
 }) {
-  // FIXED: Replaced 'any' with Partial<Book>
   const [formData, setFormData] = useState<Partial<Book>>(
     book || {
       name: '',
@@ -363,8 +360,8 @@ function AddBookModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
-      ...(formData as Book), // Type assertion to ensure it matches the expected type
-      price: Number(formData.price) || 0,
+      ...(formData as Book), 
+      price: Number(formData.price) || 0, // Keeps existing price if editing, defaults to 0 if new
       total_stock: Number(formData.total_stock) || 0,
       stock_remaining: Number(formData.stock_remaining) || 0,
       cost_price: Number(formData.cost_price) || 0,
@@ -409,37 +406,19 @@ function AddBookModal({
             />
           </div>
 
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="font-semibold text-[#571977] text-lg block mb-1">
-                Selling Price
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.price === 0 && !book ? '' : formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
-                className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
-                placeholder="0.00"
-                required
-              />
-            </div>
-
-            {/* FIXED: Added Missing Cost Price Field */}
-            <div className="flex-1">
-              <label className="font-semibold text-[#571977] text-lg block mb-1">
-                Cost Price
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.cost_price === 0 && !book ? '' : formData.cost_price}
-                onChange={(e) => setFormData({ ...formData, cost_price: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
-                className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
-                placeholder="0.00"
-                required
-              />
-            </div>
+          <div>
+            <label className="font-semibold text-[#571977] text-lg block mb-1">
+              Cost Price
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.cost_price === 0 && !book ? '' : formData.cost_price}
+              onChange={(e) => setFormData({ ...formData, cost_price: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+              className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
+              placeholder="0.00"
+              required
+            />
           </div>
 
           <div>
@@ -560,7 +539,6 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
               </p>
             </div>
             
-            {/* Added Cost Price Display for consistency */}
             <div className="flex-1">
               <label className="font-semibold text-[#571977] text-lg block mb-1">
                 Cost Price
