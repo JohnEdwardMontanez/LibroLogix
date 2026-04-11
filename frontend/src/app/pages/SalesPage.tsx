@@ -201,35 +201,45 @@ export default function SalesPage() {
         )}
       </div>
 
-  {/* =========================================
-           NEW: STOCK DEFLATION SLIDER MODAL
+{/* =========================================
+           Stock Deflation Slider Modal
            ========================================= */}
       {showSlider && (
-        /* Changed items-end to items-center and added px-4 for side spacing on mobile */
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4 animate-in fade-in duration-200">
+        /* The overlay: inset-0 ensures it covers the whole mobile screen */
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
           
-          /* Changed rounded-t-3xl to rounded-3xl to make it a floating box instead of a bottom sheet */
-          <div className="bg-white w-full max-w-md rounded-3xl p-8 space-y-6 shadow-2xl animate-in zoom-in-95 duration-300">
+          {/* The Content Box: 
+              - w-[95%] ensures it doesn't touch the screen edges on tiny phones.
+              - max-w-md prevents it from getting too wide on tablets or desktop.
+              - max-h-[90vh] ensures it's scrollable if the phone is in landscape mode.
+          */}
+          <div className="bg-white w-[95%] max-w-md rounded-[2.5rem] p-6 md:p-8 space-y-6 shadow-2xl animate-in zoom-in-95 duration-300 overflow-y-auto max-h-[90vh] relative">
             
-            <div className="flex justify-between items-center">
+            {/* Header with Close Button */}
+            <div className="flex justify-between items-center sticky top-0 bg-white pb-2">
               <h2 className="text-xl font-bold text-gray-800">Deflate Stock (Sale)</h2>
-              <button onClick={() => setShowSlider(false)} className="text-gray-400 hover:text-gray-600 p-2">
+              <button 
+                onClick={() => setShowSlider(false)} 
+                className="text-gray-400 hover:text-gray-900 p-2 rounded-full hover:bg-gray-100 transition-colors"
+              >
                 ✕
               </button>
             </div>
 
-            {/* Rest of your modal content (Select, Slider, Button) remains exactly the same... */}
+            {/* Product Selection */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-500 uppercase">Select Product</label>
+              <label className="text-xs font-black text-[#571977] uppercase tracking-widest ml-1">
+                Select Product
+              </label>
               <select 
-                className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-[#571977] outline-none"
+                className="w-full bg-gray-50 border-2 border-gray-100 p-4 rounded-2xl focus:ring-2 focus:ring-[#571977] focus:border-transparent outline-none appearance-none font-medium text-gray-700"
                 onChange={(e) => {
                   const book = books.find(b => b.id === parseInt(e.target.value));
                   setSelectedBook(book || null);
                   setSaleQty(1);
                 }}
               >
-                <option value="">-- Choose a book --</option>
+                <option value="">Choose a book...</option>
                 {books.map(b => (
                   <option key={b.id} value={b.id} disabled={b.stock_remaining <= 0}>
                     {b.name} ({b.stock_remaining} left)
@@ -238,33 +248,43 @@ export default function SalesPage() {
               </select>
             </div>
 
+            {/* Deflation Controls */}
             {selectedBook && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-gray-600">Quantity Sold:</span>
-                  <span className="text-3xl font-black text-[#571977]">{saleQty}</span>
+              <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
+                <div className="flex justify-between items-end bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase">Quantity Sold</p>
+                    <p className="text-4xl font-black text-[#571977]">{saleQty}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase">Total Price</p>
+                    <p className="text-2xl font-bold text-gray-900">₱{(saleQty * selectedBook.price).toFixed(2)}</p>
+                  </div>
                 </div>
                 
-                <input 
-                  type="range"
-                  min="1"
-                  max={selectedBook.stock_remaining}
-                  value={saleQty}
-                  onChange={(e) => setSaleQty(parseInt(e.target.value))}
-                  className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#571977]"
-                />
-                
-                <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 flex justify-between">
-                  <span className="font-bold text-purple-800">Total Price:</span>
-                  <span className="font-black text-purple-900">₱{(saleQty * selectedBook.price).toFixed(2)}</span>
+                {/* The Slider */}
+                <div className="px-2">
+                  <input 
+                    type="range"
+                    min="1"
+                    max={selectedBook.stock_remaining}
+                    value={saleQty}
+                    onChange={(e) => setSaleQty(parseInt(e.target.value))}
+                    className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#571977]"
+                  />
+                  <div className="flex justify-between mt-2 px-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">1</span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">Max: {selectedBook.stock_remaining}</span>
+                  </div>
                 </div>
 
+                {/* Confirm Button */}
                 <button 
                   onClick={handleSale}
-                  className="w-full bg-[#571977] text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                  className="w-full bg-[#571977] text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-purple-200 active:scale-[0.97] transition-all flex items-center justify-center gap-3"
                 >
-                  <MinusCircle className="w-5 h-5" />
-                  CONFIRM SALE (-{saleQty})
+                  <MinusCircle className="w-6 h-6" />
+                  CONFIRM SALE
                 </button>
               </div>
             )}
