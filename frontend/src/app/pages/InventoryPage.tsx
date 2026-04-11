@@ -279,7 +279,7 @@ function BookCard({ book, onEdit, onDelete, onDetails, onQuickRestock }: {
         <div>
           <h3 className="font-bold text-lg text-gray-900 mb-1">{book.name}</h3>
           <p className="italic text-sm text-gray-600 mb-2">{book.author}</p>
-          <p className="text-2xl font-bold text-[#571977]">${Number(book.price).toFixed(2)}</p>
+          <p className="text-2xl font-bold text-[#571977]">₱{Number(book.price).toFixed(2)}</p>
         </div>
         <button 
           onClick={() => onDelete(book.id)}
@@ -291,7 +291,7 @@ function BookCard({ book, onEdit, onDelete, onDetails, onQuickRestock }: {
 
       <div className="mb-4">
         <div className="flex gap-2 mb-3">
-          <div className={`flex-1 ${status.bgColor} ${status.textColor} rounded-full px-4 py-2 text-center`}>
+          <div className={`flex-1 ₱{status.bgColor} ₱{status.textColor} rounded-full px-4 py-2 text-center`}>
             <p className="text-xs font-semibold">In Stock</p>
             <p className="text-sm font-bold">{book.stock_remaining}</p>
           </div>
@@ -303,8 +303,8 @@ function BookCard({ book, onEdit, onDelete, onDetails, onQuickRestock }: {
         
         <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
           <div 
-            className={`h-full ${status.color} transition-all duration-300`}
-            style={{ width: `${Math.min(stockPercentage, 100)}%` }}
+            className={`h-full ₱{status.color} transition-all duration-300`}
+            style={{ width: `₱{Math.min(stockPercentage, 100)}%` }}
           />
         </div>
         <p className="text-xs text-gray-500 mt-1 text-right">{stockPercentage.toFixed(0)}% capacity</p>
@@ -532,7 +532,7 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
               Price
             </label>
             <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
-              ${Number(book.price).toFixed(2)}
+              ₱{Number(book.price).toFixed(2)}
             </p>
           </div>
 

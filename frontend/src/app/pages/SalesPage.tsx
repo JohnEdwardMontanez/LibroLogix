@@ -100,7 +100,7 @@ export default function SalesPage() {
         <div className="flex bg-gray-100 p-1 rounded-xl">
           <button
             onClick={() => setView('report')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm transition-all ₱{
               view === 'report' ? 'bg-white text-[#571977] shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -109,7 +109,7 @@ export default function SalesPage() {
           </button>
           <button
             onClick={() => setView('log')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm transition-all ₱{
               view === 'log' ? 'bg-white text-[#571977] shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -147,7 +147,7 @@ export default function SalesPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-[#caabd5] font-semibold">Author Royalty</p>
-                      <p className="text-sm font-bold text-yellow-400">${stat.royalty.toFixed(2)}</p>
+                      <p className="text-sm font-bold text-yellow-400">₱{stat.royalty.toFixed(2)}</p>
                     </div>
                   </div>
                   
@@ -158,11 +158,11 @@ export default function SalesPage() {
                       <p className="text-[10px] text-gray-500 uppercase font-semibold mt-1">Qty Sold</p>
                     </div>
                     <div className="bg-[#f0e6f2] rounded-lg p-3 text-center flex flex-col justify-center border border-[#e5d4e9]">
-                      <p className="text-lg font-bold text-[#571977]">${stat.revenue.toFixed(2)}</p>
+                      <p className="text-lg font-bold text-[#571977]">₱{stat.revenue.toFixed(2)}</p>
                       <p className="text-[10px] text-[#7a4892] uppercase font-semibold mt-1">Revenue</p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-3 text-center flex flex-col justify-center border border-green-100">
-                      <p className="text-lg font-bold text-green-700">${stat.netProfit.toFixed(2)}</p>
+                      <p className="text-lg font-bold text-green-700">₱{stat.netProfit.toFixed(2)}</p>
                       <p className="text-[10px] text-green-600 uppercase font-semibold mt-1">Net Profit</p>
                     </div>
                   </div>
@@ -186,7 +186,7 @@ export default function SalesPage() {
                 const styles = getActionStyles(tx.action_type, tx.quantity_changed);
                 return (
                   <div key={tx.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${styles.bgColor}`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ₱{styles.bgColor}`}>
                       {styles.icon}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -197,7 +197,7 @@ export default function SalesPage() {
                       </span>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className={`text-xl font-black ${styles.textColor}`}>
+                      <p className={`text-xl font-black ₱{styles.textColor}`}>
                         {styles.sign}{tx.quantity_changed}
                       </p>
                       <p className="text-xs text-gray-400 font-semibold">qty</p>

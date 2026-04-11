@@ -113,7 +113,7 @@ export default function ProfilePage() {
               <p className="text-xs font-semibold text-gray-500 uppercase mt-1">Books Managed</p>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-              <p className="text-3xl font-black text-green-600">${stats.monthlySales.toFixed(2)}</p>
+              <p className="text-3xl font-black text-green-600">₱{stats.monthlySales.toFixed(2)}</p>
               <p className="text-xs font-semibold text-gray-500 uppercase mt-1">Monthly Sales</p>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">

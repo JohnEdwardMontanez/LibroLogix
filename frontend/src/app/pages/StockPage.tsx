@@ -125,7 +125,7 @@ export default function StockPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-green-100 mb-1">Total Stock Value</p>
-              <p className="text-2xl font-bold text-white">${totalStockValue.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-white">₱{totalStockValue.toFixed(2)}</p>
             </div>
             <TrendingUp className="w-8 h-8 text-white" />
           </div>
@@ -182,14 +182,14 @@ function StockCard({ book, onRestock }: { book: Book; onRestock: (book: Book) =>
   const status = getStockStatus();
 
   return (
-    <div className={`bg-white rounded-lg shadow-md overflow-hidden border-l-4 ${status.borderColor}`}>
+    <div className={`bg-white rounded-lg shadow-md overflow-hidden border-l-4 ₱{status.borderColor}`}>
       <div className="p-4">
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1">
             <h3 className="font-bold text-base text-gray-900 mb-1">{book.name}</h3>
             <p className="text-sm text-gray-600">{book.author}</p>
           </div>
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ${status.bgColor} ${status.textColor} border ${status.borderColor}`}>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ₱{status.bgColor} ₱{status.textColor} border ₱{status.borderColor}`}>
             {status.level.toUpperCase()}
           </span>
         </div>
@@ -202,8 +202,8 @@ function StockCard({ book, onRestock }: { book: Book; onRestock: (book: Book) =>
           </div>
           <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
             <div 
-              className={`h-full ${status.color} transition-all duration-300`}
-              style={{ width: `${Math.min(stockPercentage, 100)}%` }}
+              className={`h-full ₱{status.color} transition-all duration-300`}
+              style={{ width: `₱{Math.min(stockPercentage, 100)}%` }}
             />
           </div>
         </div>
@@ -223,11 +223,11 @@ function StockCard({ book, onRestock }: { book: Book; onRestock: (book: Book) =>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div className="bg-gray-50 rounded-lg p-2">
             <p className="text-xs text-gray-600">Price</p>
-            <p className="text-base font-bold text-[#571977]">${price.toFixed(2)}</p>
+            <p className="text-base font-bold text-[#571977]">₱{price.toFixed(2)}</p>
           </div>
           <div className="bg-gray-50 rounded-lg p-2">
             <p className="text-xs text-gray-600">Stock Value</p>
-            <p className="text-base font-bold text-green-600">${(stockRemaining * price).toFixed(2)}</p>
+            <p className="text-base font-bold text-green-600">₱{(stockRemaining * price).toFixed(2)}</p>
           </div>
         </div>
 
