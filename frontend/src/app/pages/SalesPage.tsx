@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { History, TrendingUp, TrendingDown, Package, Trash2, BarChart3, List } from 'lucide-react';
+import { History, TrendingUp, TrendingDown, Package, Trash2, BarChart3, List, MinusCircle, Plus } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import { supabase } from '../../supabase';
 
@@ -32,28 +32,57 @@ export default function SalesPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // --- NEW STATES FOR SLIDER MODAL ---
+  const [showSlider, setShowSlider] = useState(false);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [saleQty, setSaleQty] = useState(1);
+
   useEffect(() => {
     fetchData();
   }, []);
 
   async function fetchData() {
     setIsLoading(true);
-    
-    // Fetch both tables at the same time
     const [txResponse, booksResponse] = await Promise.all([
       supabase.from('transactions').select('*').order('created_at', { ascending: false }),
       supabase.from('books').select('*')
     ]);
-
-    if (txResponse.error) console.error("Error fetching transactions:", txResponse.error);
-    if (booksResponse.error) console.error("Error fetching books:", booksResponse.error);
-
     setTransactions(txResponse.data || []);
     setBooks(booksResponse.data || []);
     setIsLoading(false);
   }
 
-  // Helper to format dates nicely
+  // --- NEW HANDLER FOR STOCK DEFLATION ---
+  const handleSale = async () => {
+    if (!selectedBook) return;
+
+    const newStock = selectedBook.stock_remaining - saleQty;
+    const totalSalesPrice = saleQty * selectedBook.price;
+
+    // 1. Update the Book table
+    const { error: bookError } = await supabase
+      .from('books')
+      .update({ stock_remaining: newStock })
+      .eq('id', selectedBook.id);
+
+    // 2. Add to Transactions table
+    const { error: txError } = await supabase
+      .from('transactions')
+      .insert([{
+        book_id: selectedBook.id,
+        book_name: selectedBook.name,
+        action_type: 'SALE',
+        quantity_changed: -saleQty, // Negative for deflation
+        total_amount: totalSalesPrice
+      }]);
+
+    if (!bookError && !txError) {
+      setShowSlider(false);
+      setSaleQty(1);
+      fetchData(); // Refresh list
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('en-US', {
@@ -62,7 +91,6 @@ export default function SalesPage() {
     }).format(date);
   };
 
-  // Helper for Transaction Log icons and colors
   const getActionStyles = (action: string, quantity: number) => {
     if (action === 'RESTOCK' || action === 'INITIAL_STOCK' || quantity > 0) {
       return { icon: <TrendingUp className="w-5 h-5 text-green-600" />, bgColor: 'bg-green-100', textColor: 'text-green-700', sign: '+' };
@@ -73,34 +101,34 @@ export default function SalesPage() {
     return { icon: <TrendingDown className="w-5 h-5 text-orange-600" />, bgColor: 'bg-orange-100', textColor: 'text-orange-700', sign: '' };
   };
 
-  // Generate the Data for the Sales Report Cards
   const reportData = books.map(book => {
-    // Find all deductions (sales/manual edits) for this specific book
     const bookTxs = transactions.filter(t => t.book_id === book.id && t.quantity_changed < 0);
-    
-    // Calculate total quantity sold (making the negative number positive)
     const qtySold = bookTxs.reduce((sum, t) => sum + Math.abs(t.quantity_changed), 0);
-    
-    // Calculate Financials
     const revenue = qtySold * book.price;
-    const cost = qtySold * (book.cost_price || 0); // Failsafe if cost_price is empty
-    const royalty = revenue * 0.15; // Assuming 15% royalty. Change this decimal if needed!
+    const cost = qtySold * (book.cost_price || 0);
+    const royalty = revenue * 0.15;
     const netProfit = revenue - cost;
-
     return { ...book, qtySold, revenue, netProfit, royalty };
-  }).filter(stat => stat.qtySold > 0); // Only show books that have actually sold items
+  }).filter(stat => stat.qtySold > 0);
 
   return (
-    <div className="bg-gray-50 min-h-screen pb-20">
-      {/* Header & Tabs */}
+    <div className="bg-gray-50 min-h-screen pb-32">
       <header className="bg-white px-5 pt-8 pb-4 shadow-sm sticky top-0 z-40">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Sales & Tracking</h1>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold text-gray-900">Sales & Tracking</h1>
+          {/* Floating Action Button for Sale */}
+          <button 
+            onClick={() => setShowSlider(true)}
+            className="bg-[#571977] text-white p-2 rounded-full shadow-lg active:scale-90 transition-transform"
+          >
+            <Plus className="w-6 h-6" />
+          </button>
+        </div>
         
-        {/* Tab Switcher */}
         <div className="flex bg-gray-100 p-1 rounded-xl">
           <button
             onClick={() => setView('report')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm transition-all ₱{
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm transition-all ${
               view === 'report' ? 'bg-white text-[#571977] shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -109,7 +137,7 @@ export default function SalesPage() {
           </button>
           <button
             onClick={() => setView('log')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm transition-all ₱{
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm transition-all ${
               view === 'log' ? 'bg-white text-[#571977] shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -121,94 +149,128 @@ export default function SalesPage() {
 
       <div className="px-5 pt-6 space-y-4">
         {isLoading ? (
-          <div className="text-center py-12 text-gray-500">
-            <p className="text-lg animate-pulse">Loading data...</p>
-          </div>
+          <div className="text-center py-12 text-gray-500"><p className="text-lg animate-pulse">Loading...</p></div>
         ) : view === 'report' ? (
-          
-          /* =========================================
-             VIEW 1: SALES REPORT CARDS 
-             ========================================= */
           <>
-            {reportData.length === 0 ? (
-              <div className="text-center py-12 text-gray-500 bg-white rounded-xl shadow-sm border border-gray-100">
-                <BarChart3 className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p className="text-lg font-semibold text-gray-700">No sales data yet</p>
-                <p className="text-sm mt-1">Deduct stock in inventory to see reports.</p>
-              </div>
-            ) : (
-              reportData.map((stat) => (
-                <div key={stat.id} className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
-                  {/* Purple Header */}
-                  <div className="bg-[#571977] p-4 flex justify-between items-start">
-                    <div>
-                      <h3 className="font-bold text-lg text-white line-clamp-1">{stat.name}</h3>
-                      <p className="text-sm text-[#caabd5]">by {stat.author}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-[#caabd5] font-semibold">Author Royalty</p>
-                      <p className="text-sm font-bold text-yellow-400">₱{stat.royalty.toFixed(2)}</p>
-                    </div>
+            {reportData.map((stat) => (
+              <div key={stat.id} className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+                <div className="bg-[#571977] p-4 flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-lg text-white line-clamp-1">{stat.name}</h3>
+                    <p className="text-sm text-[#caabd5]">by {stat.author}</p>
                   </div>
-                  
-                  {/* Stats Row */}
-                  <div className="p-4 grid grid-cols-3 gap-2">
-                    <div className="bg-gray-50 rounded-lg p-3 text-center flex flex-col justify-center border border-gray-100">
-                      <p className="text-lg font-bold text-gray-800">{stat.qtySold}</p>
-                      <p className="text-[10px] text-gray-500 uppercase font-semibold mt-1">Qty Sold</p>
-                    </div>
-                    <div className="bg-[#f0e6f2] rounded-lg p-3 text-center flex flex-col justify-center border border-[#e5d4e9]">
-                      <p className="text-lg font-bold text-[#571977]">₱{stat.revenue.toFixed(2)}</p>
-                      <p className="text-[10px] text-[#7a4892] uppercase font-semibold mt-1">Revenue</p>
-                    </div>
-                    <div className="bg-green-50 rounded-lg p-3 text-center flex flex-col justify-center border border-green-100">
-                      <p className="text-lg font-bold text-green-700">₱{stat.netProfit.toFixed(2)}</p>
-                      <p className="text-[10px] text-green-600 uppercase font-semibold mt-1">Net Profit</p>
-                    </div>
+                  <div className="text-right">
+                    <p className="text-xs text-[#caabd5] font-semibold">Royalty</p>
+                    <p className="text-sm font-bold text-yellow-400">₱{stat.royalty.toFixed(2)}</p>
                   </div>
                 </div>
-              ))
-            )}
+                <div className="p-4 grid grid-cols-3 gap-2">
+                  <div className="bg-gray-50 rounded-lg p-3 text-center flex flex-col justify-center">
+                    <p className="text-lg font-bold text-gray-800">{stat.qtySold}</p>
+                    <p className="text-[10px] text-gray-500 uppercase font-semibold">Qty Sold</p>
+                  </div>
+                  <div className="bg-[#f0e6f2] rounded-lg p-3 text-center">
+                    <p className="text-lg font-bold text-[#571977]">₱{stat.revenue.toFixed(2)}</p>
+                    <p className="text-[10px] text-[#7a4892] uppercase font-semibold">Revenue</p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-3 text-center">
+                    <p className="text-lg font-bold text-green-700">₱{stat.netProfit.toFixed(2)}</p>
+                    <p className="text-[10px] text-green-600 uppercase font-semibold">Profit</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </>
         ) : (
-
-          /* =========================================
-             VIEW 2: TRANSACTION LOG 
-             ========================================= */
-          <>
-            {transactions.length === 0 ? (
-              <div className="text-center py-12 text-gray-500 bg-white rounded-xl shadow-sm border border-gray-100">
-                <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p className="text-lg font-semibold text-gray-700">No logs found</p>
+          /* LOG VIEW (Same as before) */
+          transactions.map((tx) => {
+            const styles = getActionStyles(tx.action_type, tx.quantity_changed);
+            return (
+              <div key={tx.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center gap-4">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${styles.bgColor}`}>{styles.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-gray-900 truncate">{tx.book_name}</h3>
+                  <p className="text-xs text-gray-500">{formatDate(tx.created_at)}</p>
+                </div>
+                <div className="text-right">
+                  <p className={`text-lg font-black ${styles.textColor}`}>{styles.sign}{tx.quantity_changed}</p>
+                </div>
               </div>
-            ) : (
-              transactions.map((tx) => {
-                const styles = getActionStyles(tx.action_type, tx.quantity_changed);
-                return (
-                  <div key={tx.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ₱{styles.bgColor}`}>
-                      {styles.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-gray-900 truncate">{tx.book_name}</h3>
-                      <p className="text-xs text-gray-500 mb-1">{formatDate(tx.created_at)}</p>
-                      <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-bold rounded uppercase tracking-wider">
-                        {tx.action_type.replace('_', ' ')}
-                      </span>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className={`text-xl font-black ₱{styles.textColor}`}>
-                        {styles.sign}{tx.quantity_changed}
-                      </p>
-                      <p className="text-xs text-gray-400 font-semibold">qty</p>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </>
+            );
+          })
         )}
       </div>
+
+  {/* =========================================
+           NEW: STOCK DEFLATION SLIDER MODAL
+           ========================================= */}
+      {showSlider && (
+        /* Changed items-end to items-center and added px-4 for side spacing on mobile */
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4 animate-in fade-in duration-200">
+          
+          /* Changed rounded-t-3xl to rounded-3xl to make it a floating box instead of a bottom sheet */
+          <div className="bg-white w-full max-w-md rounded-3xl p-8 space-y-6 shadow-2xl animate-in zoom-in-95 duration-300">
+            
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-800">Deflate Stock (Sale)</h2>
+              <button onClick={() => setShowSlider(false)} className="text-gray-400 hover:text-gray-600 p-2">
+                ✕
+              </button>
+            </div>
+
+            {/* Rest of your modal content (Select, Slider, Button) remains exactly the same... */}
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-500 uppercase">Select Product</label>
+              <select 
+                className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-[#571977] outline-none"
+                onChange={(e) => {
+                  const book = books.find(b => b.id === parseInt(e.target.value));
+                  setSelectedBook(book || null);
+                  setSaleQty(1);
+                }}
+              >
+                <option value="">-- Choose a book --</option>
+                {books.map(b => (
+                  <option key={b.id} value={b.id} disabled={b.stock_remaining <= 0}>
+                    {b.name} ({b.stock_remaining} left)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedBook && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-gray-600">Quantity Sold:</span>
+                  <span className="text-3xl font-black text-[#571977]">{saleQty}</span>
+                </div>
+                
+                <input 
+                  type="range"
+                  min="1"
+                  max={selectedBook.stock_remaining}
+                  value={saleQty}
+                  onChange={(e) => setSaleQty(parseInt(e.target.value))}
+                  className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#571977]"
+                />
+                
+                <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 flex justify-between">
+                  <span className="font-bold text-purple-800">Total Price:</span>
+                  <span className="font-black text-purple-900">₱{(saleQty * selectedBook.price).toFixed(2)}</span>
+                </div>
+
+                <button 
+                  onClick={handleSale}
+                  className="w-full bg-[#571977] text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <MinusCircle className="w-5 h-5" />
+                  CONFIRM SALE (-{saleQty})
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <BottomNav />
     </div>
