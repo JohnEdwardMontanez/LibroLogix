@@ -8,7 +8,7 @@ export interface Book {
   id: number;
   name: string;
   author: string;
-  price?: number; // Made optional since it's not being actively used in the DB
+  price?: number; 
   publish_date: string;
   status: string;
   stock_remaining: number;
@@ -57,7 +57,6 @@ export default function SalesPage() {
     if (!selectedBook) return;
 
     const newStock = selectedBook.stock_remaining - saleQty;
-    // Updated to use cost_price since price doesn't exist/isn't populated
     const totalSalesPrice = saleQty * (Number(selectedBook.cost_price) || 0);
 
     // 1. Update the Book table
@@ -109,15 +108,13 @@ export default function SalesPage() {
     const bookTxs = transactions.filter(t => t.book_id === book.id && t.action_type === 'SALE');
     const qtySold = bookTxs.reduce((sum, t) => sum + Math.abs(t.quantity_changed), 0);
     
-    // Using cost_price instead of price
+    // THE NEW MATH
     const revenue = qtySold * (Number(book.cost_price) || 0);
+    const materialsCost = revenue * 0.50; // 50% subtracted for materials
+    const royalty = revenue * 0.15; // 15% subtracted for the author
+    const netProfit = revenue - materialsCost - royalty; // Equivalent company profit
     
-    // Since there's only one price field (cost_price), Profit will mirror Revenue to avoid huge negative numbers
-    const netProfit = revenue; 
-    
-    const royalty = revenue * 0.15;
-    
-    return { ...book, qtySold, revenue, netProfit, royalty };
+    return { ...book, qtySold, revenue, materialsCost, netProfit, royalty };
   }).filter(stat => stat.qtySold > 0);
 
   return (
@@ -169,7 +166,7 @@ export default function SalesPage() {
                     <p className="text-sm text-[#caabd5]">by {stat.author}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-[#caabd5] font-semibold">Royalty</p>
+                    <p className="text-xs text-[#caabd5] font-semibold">Author Cut</p>
                     <p className="text-sm font-bold text-yellow-400">₱{stat.royalty.toFixed(2)}</p>
                   </div>
                 </div>
@@ -178,13 +175,13 @@ export default function SalesPage() {
                     <p className="text-lg font-bold text-gray-800">{stat.qtySold}</p>
                     <p className="text-[10px] text-gray-500 uppercase font-semibold">Qty Sold</p>
                   </div>
-                  <div className="bg-[#f0e6f2] rounded-lg p-3 text-center">
+                  <div className="bg-[#f0e6f2] rounded-lg p-3 text-center flex flex-col justify-center">
                     <p className="text-lg font-bold text-[#571977]">₱{stat.revenue.toFixed(2)}</p>
-                    <p className="text-[10px] text-[#7a4892] uppercase font-semibold">Revenue</p>
+                    <p className="text-[10px] text-[#7a4892] uppercase font-semibold leading-tight">Revenue<br/><span className="text-[8px] opacity-75">(-₱{stat.materialsCost.toFixed(2)} Mat.)</span></p>
                   </div>
-                  <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <div className="bg-green-50 rounded-lg p-3 text-center flex flex-col justify-center">
                     <p className="text-lg font-bold text-green-700">₱{stat.netProfit.toFixed(2)}</p>
-                    <p className="text-[10px] text-green-600 uppercase font-semibold">Profit</p>
+                    <p className="text-[10px] text-green-600 uppercase font-semibold">Company Profit</p>
                   </div>
                 </div>
               </div>
@@ -255,7 +252,7 @@ export default function SalesPage() {
               <p className="text-4xl font-black text-[#571977]">{saleQty}</p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-bold text-gray-400 uppercase">Total Price</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase">Total Revenue</p>
               <p className="text-2xl font-bold text-gray-900">₱{(saleQty * (Number(selectedBook.cost_price) || 0)).toFixed(2)}</p>
             </div>
           </div>
