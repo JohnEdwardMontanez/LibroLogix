@@ -120,14 +120,18 @@ export default function InventoryPage() {
   };
 
   const handleSaveBook = async (bookData: Book) => {
+    // 1. Remove 'price' and 'id' from the data we send to Supabase so it doesn't crash
+    const { price, id, ...dataToSend } = bookData; 
+
     if (editingBook) {
       // Find old book to see if stock changed manually
       const oldBook = books.find(b => b.id === bookData.id);
       const stockDiff = bookData.stock_remaining - (oldBook?.stock_remaining || 0);
 
+      // 2. Use dataToSend for updating the database
       const { error } = await supabase
         .from('books')
-        .update(bookData)
+        .update(dataToSend)
         .eq('id', bookData.id);
 
       if (!error) {
@@ -147,10 +151,10 @@ export default function InventoryPage() {
         console.error("Error updating:", error);
       }
     } else {
-      const { id, ...newBookData } = bookData; 
+      // 3. Use dataToSend for inserting a new book
       const { data, error } = await supabase
         .from('books')
-        .insert([newBookData])
+        .insert([dataToSend])
         .select();
 
       if (!error && data) {
@@ -279,7 +283,6 @@ function BookCard({ book, onEdit, onDelete, onDetails, onQuickRestock }: {
         <div>
           <h3 className="font-bold text-lg text-gray-900 mb-1">{book.name}</h3>
           <p className="italic text-sm text-gray-600 mb-2">{book.author}</p>
-          {/* Changed book.price to book.cost_price below to display the updated field */}
           <p className="text-2xl font-bold text-[#571977]">₱{Number(book.cost_price).toFixed(2)}</p>
         </div>
         <button 
@@ -516,7 +519,7 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
             <label className="font-semibold text-[#571977] text-lg block mb-1">
               Book Name
             </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
+            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
               {book.name}
             </p>
           </div>
@@ -525,17 +528,16 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
             <label className="font-semibold text-[#571977] text-lg block mb-1">
               Author
             </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
+            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
               {book.author}
             </p>
           </div>
 
-          {/* Replaced split Selling/Cost price fields with full-width Cost Price */}
           <div>
             <label className="font-semibold text-[#571977] text-lg block mb-1">
               Cost Price
             </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
+            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
               ₱{Number(book.cost_price).toFixed(2)}
             </p>
           </div>
@@ -544,7 +546,7 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
             <label className="font-semibold text-[#571977] text-lg block mb-1">
               Published Date
             </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
+            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
               {book.publish_date}
             </p>
           </div>
@@ -554,7 +556,7 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
               <label className="font-semibold text-[#571977] text-lg block mb-1">
                 Total Capacity
               </label>
-              <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
+              <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
                 {book.total_stock}
               </p>
             </div>
@@ -563,7 +565,7 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
               <label className="font-semibold text-[#571977] text-lg block mb-1">
                 In Stock
               </label>
-              <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
+              <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
                 {book.stock_remaining}
               </p>
             </div>
@@ -573,7 +575,7 @@ function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
             <label className="font-semibold text-[#571977] text-lg block mb-1">
               Status
             </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977] flex items-center">
+            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
               {book.status}
             </p>
           </div>
