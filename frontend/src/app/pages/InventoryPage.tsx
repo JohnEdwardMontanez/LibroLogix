@@ -223,6 +223,9 @@ export default function InventoryPage() {
         )}
       </div>
 
+      {/* Moved BottomNav ABOVE the modals so standard DOM stacking prioritizes the modals */}
+      <BottomNav />
+
       {showAddModal && (
         <AddBookModal
           book={editingBook}
@@ -254,8 +257,6 @@ export default function InventoryPage() {
           onSave={saveRestock}
         />
       )}
-
-      <BottomNav />
     </div>
   );
 }
@@ -373,7 +374,8 @@ function AddBookModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+    // Forced zIndex to 9999 inline to override any other active rules
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="bg-[#571977] px-6 py-4 rounded-t-lg">
           <h2 className="font-bold text-xl text-white text-center">
@@ -506,7 +508,8 @@ function AddBookModal({
 
 function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+    // Forced zIndex to 9999 inline
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="bg-[#571977] px-6 py-4 rounded-t-lg">
           <h2 className="font-bold text-xl text-white text-center">
@@ -605,7 +608,8 @@ function QuickRestockModal({ book, onClose, onSave }: { book: Book; onClose: () 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+    // Forced zIndex to 9999 inline
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="bg-[#571977] px-6 py-4 rounded-t-lg">
           <h2 className="font-bold text-xl text-white text-center">
