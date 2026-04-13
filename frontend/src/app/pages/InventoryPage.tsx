@@ -373,7 +373,7 @@ function AddBookModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="bg-[#571977] px-6 py-4 rounded-t-lg">
           <h2 className="font-bold text-xl text-white text-center">
@@ -506,7 +506,7 @@ function AddBookModal({
 
 function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="bg-[#571977] px-6 py-4 rounded-t-lg">
           <h2 className="font-bold text-xl text-white text-center">
@@ -605,7 +605,7 @@ function QuickRestockModal({ book, onClose, onSave }: { book: Book; onClose: () 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="bg-[#571977] px-6 py-4 rounded-t-lg">
           <h2 className="font-bold text-xl text-white text-center">
