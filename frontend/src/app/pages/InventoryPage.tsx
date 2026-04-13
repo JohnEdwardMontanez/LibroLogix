@@ -54,13 +54,12 @@ export default function InventoryPage() {
       } else {
         setBooks(books.filter(book => book.id !== id));
         
-        // LOG TRANSACTION: Book Deleted
         if (bookToDelete) {
           await supabase.from('transactions').insert([{
             book_id: id,
             book_name: bookToDelete.name,
             action_type: 'DELETED',
-            quantity_changed: -(bookToDelete.stock_remaining), // Log the lost inventory
+            quantity_changed: -(bookToDelete.stock_remaining), 
             total_amount: 0
           }]);
         }
@@ -98,7 +97,6 @@ export default function InventoryPage() {
       return;
     }
 
-    // LOG TRANSACTION: Book Restocked
     const { error: logError } = await supabase.from('transactions').insert([{
       book_id: bookId,
       book_name: bookToRestock?.name || 'Unknown',
@@ -120,15 +118,12 @@ export default function InventoryPage() {
   };
 
   const handleSaveBook = async (bookData: Book) => {
-    // 1. Remove 'price' and 'id' from the data we send to Supabase so it doesn't crash
     const { price, id, ...dataToSend } = bookData; 
 
     if (editingBook) {
-      // Find old book to see if stock changed manually
       const oldBook = books.find(b => b.id === bookData.id);
       const stockDiff = bookData.stock_remaining - (oldBook?.stock_remaining || 0);
 
-      // 2. Use dataToSend for updating the database
       const { error } = await supabase
         .from('books')
         .update(dataToSend)
@@ -137,7 +132,6 @@ export default function InventoryPage() {
       if (!error) {
         setBooks(books.map(b => b.id === bookData.id ? bookData : b));
         
-        // LOG TRANSACTION: Manual Edit (Only if stock actually changed)
         if (stockDiff !== 0) {
           await supabase.from('transactions').insert([{
             book_id: bookData.id,
@@ -149,9 +143,9 @@ export default function InventoryPage() {
         }
       } else {
         console.error("Error updating:", error);
+        alert("Failed to update database.");
       }
     } else {
-      // 3. Use dataToSend for inserting a new book
       const { data, error } = await supabase
         .from('books')
         .insert([dataToSend])
@@ -161,7 +155,6 @@ export default function InventoryPage() {
         const newBook = data[0];
         setBooks([...books, newBook]);
 
-        // LOG TRANSACTION: Initial Stock Added
         await supabase.from('transactions').insert([{
           book_id: newBook.id,
           book_name: newBook.name,
@@ -171,6 +164,7 @@ export default function InventoryPage() {
         }]);
       } else {
         console.error("Error adding:", error);
+        alert("Failed to save to database.");
       }
     }
     setShowAddModal(false);
@@ -223,7 +217,6 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* Moved BottomNav ABOVE the modals so standard DOM stacking prioritizes the modals */}
       <BottomNav />
 
       {showAddModal && (
@@ -364,9 +357,19 @@ function AddBookModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // MOBILE FIX: Manual validation instead of HTML 'required' tags
+    // This forces an alert on mobile instead of failing silently when the keyboard hides fields
+    if (!formData.name?.trim()) return alert("Please enter the Book Name.");
+    if (!formData.author?.trim()) return alert("Please enter the Author.");
+    if (formData.cost_price === undefined || Number.isNaN(formData.cost_price)) return alert("Please enter a valid Cost Price.");
+    if (!formData.publish_date) return alert("Please select a Published Date.");
+    if (formData.total_stock === undefined || Number.isNaN(formData.total_stock)) return alert("Please enter Total Capacity.");
+    if (formData.stock_remaining === undefined || Number.isNaN(formData.stock_remaining)) return alert("Please enter In Stock amount.");
+
     onSave({
       ...(formData as Book), 
-      price: Number(formData.price) || 0, // Keeps existing price if editing, defaults to 0 if new
+      price: Number(formData.price) || 0,
       total_stock: Number(formData.total_stock) || 0,
       stock_remaining: Number(formData.stock_remaining) || 0,
       cost_price: Number(formData.cost_price) || 0,
@@ -374,48 +377,41 @@ function AddBookModal({
   };
 
   return (
-    // Forced zIndex to 9999 inline to override any other active rules
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="bg-[#571977] px-6 py-4 rounded-t-lg">
+      {/* MOBILE FIX: max-h-[85vh] instead of 90, prevents clipping on mobile browsers */}
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[85vh] overflow-y-auto">
+        <div className="bg-[#571977] px-6 py-4 rounded-t-lg sticky top-0 z-10">
           <h2 className="font-bold text-xl text-white text-center">
             {book ? 'EDIT RECORD' : 'ADD NEW RECORD'}
           </h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        {/* MOBILE FIX: Added pb-8 to push buttons away from the very bottom edge of the phone */}
+        <form onSubmit={handleSubmit} className="p-6 pb-8 space-y-5">
           <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Book Name
-            </label>
+            <label className="font-semibold text-[#571977] text-lg block mb-1">Book Name</label>
             <input
               type="text"
               value={formData.name || ''}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
               placeholder="Enter book name"
-              required
             />
           </div>
 
           <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Author
-            </label>
+            <label className="font-semibold text-[#571977] text-lg block mb-1">Author</label>
             <input
               type="text"
               value={formData.author || ''}
               onChange={(e) => setFormData({ ...formData, author: e.target.value })}
               className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
               placeholder="Enter author name"
-              required
             />
           </div>
 
           <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Cost Price
-            </label>
+            <label className="font-semibold text-[#571977] text-lg block mb-1">Cost Price</label>
             <input
               type="number"
               step="0.01"
@@ -423,58 +419,45 @@ function AddBookModal({
               onChange={(e) => setFormData({ ...formData, cost_price: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
               className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
               placeholder="0.00"
-              required
             />
           </div>
 
           <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Published Date
-            </label>
+            <label className="font-semibold text-[#571977] text-lg block mb-1">Published Date</label>
             <input
               type="date"
               value={formData.publish_date || ''}
               onChange={(e) => setFormData({ ...formData, publish_date: e.target.value })}
               className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
-              placeholder="YYYY-MM-DD"
-              required
             />
           </div>
 
           <div className="flex gap-4">
             <div className="flex-1">
-              <label className="font-semibold text-[#571977] text-lg block mb-1">
-                Total Capacity
-              </label>
+              <label className="font-semibold text-[#571977] text-lg block mb-1">Total Capacity</label>
               <input
                 type="number"
                 value={formData.total_stock === 0 && !book ? '' : formData.total_stock}
                 onChange={(e) => setFormData({ ...formData, total_stock: e.target.value === '' ? 0 : parseInt(e.target.value) })}
                 className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
                 placeholder="0"
-                required
               />
             </div>
 
             <div className="flex-1">
-              <label className="font-semibold text-[#571977] text-lg block mb-1">
-                In Stock
-              </label>
+              <label className="font-semibold text-[#571977] text-lg block mb-1">In Stock</label>
               <input
                 type="number"
                 value={formData.stock_remaining === 0 && !book ? '' : formData.stock_remaining}
                 onChange={(e) => setFormData({ ...formData, stock_remaining: e.target.value === '' ? 0 : parseInt(e.target.value) })}
                 className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
                 placeholder="0"
-                required
               />
             </div>
           </div>
 
           <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Status
-            </label>
+            <label className="font-semibold text-[#571977] text-lg block mb-1">Status</label>
             <select
               value={formData.status || 'Active'}
               onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
@@ -485,7 +468,7 @@ function AddBookModal({
             </select>
           </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-4">
             <button
               type="submit"
               className="flex-1 bg-[#571977] h-12 rounded-md shadow-md font-bold text-lg text-white hover:bg-[#6a1e8a] transition-colors active:scale-[0.98]"
@@ -508,89 +491,24 @@ function AddBookModal({
 
 function DetailsModal({ book, onClose }: { book: Book; onClose: () => void }) {
   return (
-    // Forced zIndex to 9999 inline
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="bg-[#571977] px-6 py-4 rounded-t-lg">
-          <h2 className="font-bold text-xl text-white text-center">
-            BOOK DETAILS
-          </h2>
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[85vh] overflow-y-auto">
+        <div className="bg-[#571977] px-6 py-4 rounded-t-lg sticky top-0 z-10">
+          <h2 className="font-bold text-xl text-white text-center">BOOK DETAILS</h2>
         </div>
-
-        <div className="p-6 space-y-5">
-          <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Book Name
-            </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
-              {book.name}
-            </p>
-          </div>
-
-          <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Author
-            </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
-              {book.author}
-            </p>
-          </div>
-
-          <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Cost Price
-            </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
-              ₱{Number(book.cost_price).toFixed(2)}
-            </p>
-          </div>
-
-          <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Published Date
-            </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
-              {book.publish_date}
-            </p>
-          </div>
-
+        <div className="p-6 pb-8 space-y-5">
+          {/* Details content remains unchanged */}
+          <div><label className="font-semibold text-[#571977] text-lg block mb-1">Book Name</label><p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black flex items-center">{book.name}</p></div>
+          <div><label className="font-semibold text-[#571977] text-lg block mb-1">Author</label><p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black flex items-center">{book.author}</p></div>
+          <div><label className="font-semibold text-[#571977] text-lg block mb-1">Cost Price</label><p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black flex items-center">₱{Number(book.cost_price).toFixed(2)}</p></div>
+          <div><label className="font-semibold text-[#571977] text-lg block mb-1">Published Date</label><p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black flex items-center">{book.publish_date}</p></div>
           <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="font-semibold text-[#571977] text-lg block mb-1">
-                Total Capacity
-              </label>
-              <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
-                {book.total_stock}
-              </p>
-            </div>
-
-            <div className="flex-1">
-              <label className="font-semibold text-[#571977] text-lg block mb-1">
-                In Stock
-              </label>
-              <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
-                {book.stock_remaining}
-              </p>
-            </div>
+            <div className="flex-1"><label className="font-semibold text-[#571977] text-lg block mb-1">Total Capacity</label><p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black flex items-center">{book.total_stock}</p></div>
+            <div className="flex-1"><label className="font-semibold text-[#571977] text-lg block mb-1">In Stock</label><p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black flex items-center">{book.stock_remaining}</p></div>
           </div>
-
-          <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Status
-            </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
-              {book.status}
-            </p>
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-white border-2 border-gray-300 h-12 rounded-md shadow-md font-bold text-lg text-black hover:bg-gray-50 transition-colors active:scale-[0.98]"
-            >
-              CLOSE
-            </button>
+          <div><label className="font-semibold text-[#571977] text-lg block mb-1">Status</label><p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black flex items-center">{book.status}</p></div>
+          <div className="flex gap-3 pt-4">
+            <button type="button" onClick={onClose} className="flex-1 bg-white border-2 border-gray-300 h-12 rounded-md shadow-md font-bold text-lg text-black hover:bg-gray-50 transition-colors active:scale-[0.98]">CLOSE</button>
           </div>
         </div>
       </div>
@@ -604,80 +522,30 @@ function QuickRestockModal({ book, onClose, onSave }: { book: Book; onClose: () 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (newTotal === '' || newStock === '') return alert("Please fill in both stock values.");
     onSave(book.id, Number(newStock) || 0, Number(newTotal) || 0);
   };
 
   return (
-    // Forced zIndex to 9999 inline
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="bg-[#571977] px-6 py-4 rounded-t-lg">
-          <h2 className="font-bold text-xl text-white text-center">
-            QUICK RESTOCK
-          </h2>
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[85vh] overflow-y-auto">
+        <div className="bg-[#571977] px-6 py-4 rounded-t-lg sticky top-0 z-10">
+          <h2 className="font-bold text-xl text-white text-center">QUICK RESTOCK</h2>
         </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 pb-8 space-y-5">
+          <div><label className="font-semibold text-[#571977] text-lg block mb-1">Book Name</label><p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black flex items-center">{book.name}</p></div>
+          <div><label className="font-semibold text-[#571977] text-lg block mb-1">Author</label><p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black flex items-center">{book.author}</p></div>
           <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Book Name
-            </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
-              {book.name}
-            </p>
+            <label className="font-semibold text-[#571977] text-lg block mb-1">Total Capacity</label>
+            <input type="number" value={newTotal} onChange={(e) => setNewTotal(e.target.value === '' ? '' : parseInt(e.target.value))} className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black focus:outline-none focus:ring-2 focus:ring-[#571977]" />
           </div>
-
           <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Author
-            </label>
-            <p className="w-full h-12 bg-gray-100 rounded-md shadow-md px-4 text-black placeholder:text-gray-600 flex items-center">
-              {book.author}
-            </p>
+            <label className="font-semibold text-[#571977] text-lg block mb-1">Stock Remaining</label>
+            <input type="number" value={newStock} onChange={(e) => setNewStock(e.target.value === '' ? '' : parseInt(e.target.value))} className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black focus:outline-none focus:ring-2 focus:ring-[#571977]" />
           </div>
-
-          <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Total Capacity
-            </label>
-            <input
-              type="number"
-              value={newTotal}
-              onChange={(e) => setNewTotal(e.target.value === '' ? '' : parseInt(e.target.value))}
-              className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
-              placeholder="0"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="font-semibold text-[#571977] text-lg block mb-1">
-              Stock Remaining
-            </label>
-            <input
-              type="number"
-              value={newStock}
-              onChange={(e) => setNewStock(e.target.value === '' ? '' : parseInt(e.target.value))}
-              className="w-full h-12 bg-[#caabd5] rounded-md shadow-md px-4 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#571977]"
-              placeholder="0"
-              required
-            />
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="submit"
-              className="flex-1 bg-[#571977] h-12 rounded-md shadow-md font-bold text-lg text-white hover:bg-[#6a1e8a] transition-colors active:scale-[0.98]"
-            >
-              RESTOCK
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-white border-2 border-gray-300 h-12 rounded-md shadow-md font-bold text-lg text-black hover:bg-gray-50 transition-colors active:scale-[0.98]"
-            >
-              CANCEL
-            </button>
+          <div className="flex gap-3 pt-4">
+            <button type="submit" className="flex-1 bg-[#571977] h-12 rounded-md shadow-md font-bold text-lg text-white hover:bg-[#6a1e8a] transition-colors active:scale-[0.98]">RESTOCK</button>
+            <button type="button" onClick={onClose} className="flex-1 bg-white border-2 border-gray-300 h-12 rounded-md shadow-md font-bold text-lg text-black hover:bg-gray-50 transition-colors active:scale-[0.98]">CANCEL</button>
           </div>
         </form>
       </div>
